@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -120,6 +118,29 @@ services:
       MOVIES_MIGRATION_PERCENT: "50"
     networks:
       - cinemaabyss-network
+
+  # PlantUML server for editor preview of schemas/diagrams
+  # Same PlantUML version as the plantuml exporter, so editor preview matches exported SVG
+  plantuml-server:
+    image: plantuml/plantuml-server:jetty-v1.2026.9
+    container_name: cinemaabyss-plantuml-server
+    ports:
+      - "8093:8080"   # 8090 занят kafka-ui
+    volumes:
+      - ./schemas/diagrams:/workspace:ro
+    environment:
+      PLANTUML_CONFIG_FILE: /workspace/config/plantuml-preamble.puml
+      PLANTUML_PROPERTY_FILE: /workspace/config/plantuml-server.properties
+    restart: unless-stopped
+
+  # SVG exporter for make diagrams; the tools profile keeps it out of docker compose up
+  plantuml:
+    build:
+      context: ./schemas/diagrams/tools
+    image: cinemaabyss/plantuml
+    profiles: [tools]
+    volumes:
+      - ./schemas/diagrams:/work
 
   # Kafka UI for monitoring Kafka
   kafka-ui:
