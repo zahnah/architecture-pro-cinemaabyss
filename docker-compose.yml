@@ -171,6 +171,15 @@ services:
       - ./src/kubernetes:/work:ro
     command: -strict -summary -ignore-filename-pattern helm /work
 
+  # Helm chart rendering for make helm-lint; mounts the whole repo so the
+  # chart path src/kubernetes/helm is reachable from working_dir /work
+  helm:
+    image: alpine/helm:3.21.1
+    profiles: [tools]
+    working_dir: /work
+    volumes:
+      - .:/work:ro
+
   # GitHub Actions workflow lint for make actionlint; the image entrypoint
   # is the actionlint binary itself, so a shell is needed to expand the glob
   actionlint:

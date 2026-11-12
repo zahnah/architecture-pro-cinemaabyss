@@ -1,0 +1,12 @@
+# Пример override-файла. Реальные секреты НЕ коммитить: скопируйте этот файл в
+# values.local.yaml (он в .gitignore) и подставьте валидный .dockerconfigjson,
+# затем используйте: helm template -f values.yaml -f values.local.yaml ...
+# (аналогично для helm install/upgrade).
+#
+# Значение .dockerconfigjson можно получить так (PAT не хранить в git):
+#   cat ~/.docker/config.json | base64 -w0
+# либо создать секрет напрямую, как описано в
+# src/kubernetes/dockerconfigsecret.example.yaml
+imagePullSecrets:
+  # base64 от {"auths":{}} — плейсхолдер без реальных учётных данных
+  dockerconfigjson: eyJhdXRocyI6e319

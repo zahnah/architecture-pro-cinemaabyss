@@ -1,4 +1,4 @@
-.PHONY: up down build diagrams codegen k8s-lint actionlint test k8s-up k8s-down k8s-test precommit
+.PHONY: up down build diagrams codegen k8s-lint helm-lint actionlint test k8s-up k8s-down k8s-test precommit
 
 up:
 	docker compose up -d
@@ -17,6 +17,12 @@ codegen:
 
 k8s-lint:
 	docker compose run --rm kubeconform
+
+# pipefail обязателен: иначе падение helm template маскируется пустым
+# stdin kubeconform (0 ресурсов = успех)
+helm-lint: SHELL := /bin/bash
+helm-lint:
+	set -o pipefail; docker compose run --rm --no-deps helm template cinemaabyss src/kubernetes/helm --namespace cinemaabyss | docker compose run --rm --no-deps -T kubeconform -strict -summary -
 
 actionlint:
 	docker compose run --rm actionlint
@@ -74,5 +80,6 @@ precommit:
 	$(MAKE) codegen
 	$(MAKE) build
 	$(MAKE) k8s-lint
+	$(MAKE) helm-lint
 	$(MAKE) actionlint
 	$(MAKE) test
