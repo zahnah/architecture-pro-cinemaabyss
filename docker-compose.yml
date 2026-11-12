@@ -162,6 +162,26 @@ services:
     volumes:
       - .:/work
 
+  # Kubernetes manifest validation for make k8s-lint; helm/ is skipped
+  # via -ignore-filename-pattern because it contains Go templates
+  kubeconform:
+    image: ghcr.io/yannh/kubeconform:v0.7.0
+    profiles: [tools]
+    volumes:
+      - ./src/kubernetes:/work:ro
+    command: -strict -summary -ignore-filename-pattern helm /work
+
+  # GitHub Actions workflow lint for make actionlint; the image entrypoint
+  # is the actionlint binary itself, so a shell is needed to expand the glob
+  actionlint:
+    image: rhysd/actionlint:1.7.7
+    profiles: [tools]
+    working_dir: /work
+    entrypoint: ["sh", "-c"]
+    command: actionlint .github/workflows/*.yml
+    volumes:
+      - .:/work:ro
+
   # Kafka UI for monitoring Kafka
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

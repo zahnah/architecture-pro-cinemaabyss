@@ -55,6 +55,7 @@ kubeconfig
 .env.test.local
 .env.production.local
 *.env
+src/kubernetes/dockerconfigsecret.yaml
 
 # Logs
 logs/
@@ -154,3 +155,4 @@ go.work
 
 # Postman tests reports
 tests/postman/reports/
+src/kubernetes/dockerconfigsecret.yaml
