@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+// Доменные события events-service в Apache Kafka.
+// Значение записи Kafka — бинарный Protobuf одного из сообщений ниже,
+// ключ — id сущности (movie_id / user_id / payment_id) в UTF-8,
+// тип сообщения — в заголовке eventType (имя сообщения без пакета).
+// Потребители обрабатывают события идемпотентно по event_id.
+// Поля добавляются только с новыми номерами; удалённые номера помечаются reserved.
+// HTTP API events-service остаётся JSON — Protobuf используется только на шине.
+package cinemaabyss.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "events-service/internal/gen/events/v1;eventsv1";
+
+// Топик movie-events. Событие о действии с фильмом (viewed, rated, ...).
+message MovieEvent {
+  // UUID; потребители обрабатывают события идемпотентно по нему
+  string event_id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  int64 movie_id = 3;
+  string title = 4;
+  string action = 5;
+  int64 user_id = 6;
+}
+
+// Топик user-events. Событие о действии пользователя (registered, logged_in, ...).
+message UserEvent {
+  string event_id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  int64 user_id = 3;
+  string username = 4;
+  string action = 5;
+  // Клиентская ISO-строка из HTTP-контракта; НЕ путать с occurred_at
+  string timestamp = 6;
+}
+
+// Топик payment-events. Событие о платеже.
+message PaymentEvent {
+  string event_id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  int64 payment_id = 3;
+  int64 user_id = 4;
+  double amount = 5;
+  string status = 6;
+  // Клиентская ISO-строка из HTTP-контракта; НЕ путать с occurred_at
+  string timestamp = 7;
+  string method_type = 8;
+}
