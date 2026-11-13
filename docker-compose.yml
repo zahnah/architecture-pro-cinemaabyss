@@ -169,7 +169,9 @@ services:
     profiles: [tools]
     volumes:
       - ./src/kubernetes:/work:ro
-    command: -strict -summary -ignore-filename-pattern helm /work
+    # -ignore-missing-schemas: Istio CRD (Gateway/VirtualService/DestinationRule)
+    # не имеют встроенных схем в kubeconform
+    command: -strict -summary -ignore-missing-schemas -ignore-filename-pattern helm /work
 
   # Helm chart rendering for make helm-lint; mounts the whole repo so the
   # chart path src/kubernetes/helm is reachable from working_dir /work

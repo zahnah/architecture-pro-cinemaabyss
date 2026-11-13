@@ -1,4 +1,4 @@
-.PHONY: up down build diagrams codegen k8s-lint helm-lint actionlint test k8s-up k8s-down k8s-test precommit
+.PHONY: up down build diagrams codegen k8s-lint helm-lint actionlint test k8s-up k8s-down k8s-test istio-up istio-cb istio-test precommit
 
 up:
 	docker compose up -d
@@ -83,3 +83,39 @@ precommit:
 	$(MAKE) helm-lint
 	$(MAKE) actionlint
 	$(MAKE) test
+
+# istio-цели: trap-teardown не применяется по тем же причинам, что и для k8s-*.
+# Порядок gateway -> istiod осознанный (так в задании); из-за него под gateway
+# создаётся с image "auto" до поднятия webhook'а istiod, поэтому после
+# установки istiod делаем rollout restart gateway — иначе ImagePullBackOff.
+istio-up:
+	minikube status >/dev/null 2>&1 || { echo "ERROR: minikube не запущен"; exit 1; }; \
+		helm repo add istio https://istio-release.storage.googleapis.com/charts && \
+		helm repo update && \
+		helm upgrade --install istio-base istio/base -n istio-system --set defaultRevision=default --create-namespace && \
+		helm upgrade --install istio-ingressgateway istio/gateway -n istio-system && \
+		helm upgrade --install istiod istio/istiod -n istio-system --wait \
+			--set pilot.resources.requests.cpu=100m \
+			--set pilot.resources.requests.memory=512Mi && \
+		kubectl rollout restart deployment istio-ingressgateway -n istio-system && \
+		kubectl rollout status deployment istio-ingressgateway -n istio-system && \
+		kubectl label namespace cinemaabyss istio-injection=enabled --overwrite && \
+		kubectl patch statefulset postgres -n cinemaabyss -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"false"}}}}}' && \
+		kubectl patch statefulset kafka -n cinemaabyss -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"false"}}}}}' && \
+		kubectl patch statefulset zookeeper -n cinemaabyss -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"false"}}}}}' && \
+		kubectl rollout restart deployment,statefulset -n cinemaabyss && \
+		kubectl apply -f src/kubernetes/istio-gateway.yaml && \
+		kubectl get pods -n istio-system
+
+istio-cb:
+	kubectl apply -f src/kubernetes/circuit-breaker-config.yaml -n cinemaabyss && \
+		kubectl get destinationrules -n cinemaabyss
+
+# Fortio-тест circuit breaker'а: при -c 50 ожидается ~80% ответов 503
+# (upstream_rq_pending_overflow > 0 в стате sidecar'а fortio).
+istio-test:
+	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.25/samples/httpbin/sample-client/fortio-deploy.yaml -n cinemaabyss && \
+		kubectl wait --for=condition=ready pod -l app=fortio -n cinemaabyss --timeout=120s && \
+		FORTIO_POD=$$(kubectl get pod -n cinemaabyss -l app=fortio -o jsonpath='{.items[0].metadata.name}') && \
+		kubectl exec -n cinemaabyss $$FORTIO_POD -c fortio -- fortio load -c 50 -qps 0 -n 500 -loglevel Warning http://movies-service:8081/api/movies && \
+		kubectl exec -n cinemaabyss $$FORTIO_POD -c istio-proxy -- pilot-agent request GET stats | grep movies-service | grep pending

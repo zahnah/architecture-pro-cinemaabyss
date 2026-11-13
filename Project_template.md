@@ -417,7 +417,9 @@ cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq
 You can see 21 for the upstream_rq_pending_overflow value which means 21 calls so far have been flagged for circuit breaking.
 ```
 
-Приложите скриншот работы circuit breaker'а
+Приложите скриншот работы circuit breaker'а  
+[Задание 5. Fortio load](docs/project_template/fortio-load.log)  
+[Задание 5. fortio stats](docs/project_template/fortio-stats.log)  
 
 Удаляем все
 ```bash

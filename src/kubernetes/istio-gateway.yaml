@@ -1,0 +1,47 @@
+# Istio ingress: замена nginx Ingress из ingress.yaml.
+# Трафик приходит на istio-ingressgateway (namespace istio-system),
+# Gateway принимает HTTP на 80 порту для cinemaabyss.example.com,
+# VirtualService маршрутизирует: /api/events -> events-service, остальное -> proxy-service.
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: cinemaabyss-gateway
+  namespace: cinemaabyss
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - cinemaabyss.example.com
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: cinemaabyss-vs
+  namespace: cinemaabyss
+spec:
+  hosts:
+    - cinemaabyss.example.com
+  gateways:
+    - cinemaabyss-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api/events
+      route:
+        - destination:
+            host: events-service
+            port:
+              number: 8082
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: proxy-service
+            port:
+              number: 8000
