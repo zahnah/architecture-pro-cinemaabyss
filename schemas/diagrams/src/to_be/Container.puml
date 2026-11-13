@@ -1,0 +1,47 @@
+@startuml
+!define RELATIVE_INCLUDE
+
+title CinemaAbyss — Container Diagram (To-Be)
+
+top to bottom direction
+
+!include C4_Container.puml
+
+Person(user, "Пользователь", "Смотрит фильмы, управляет подпиской, оплачивает")
+Person(admin, "Сотрудник КиноБездны", "Ведёт каталог фильмов")
+
+System_Boundary(cinemaabyss, "Платформа «КиноБездна»") {
+
+  Container(proxy, "API Gateway", "Proxy Service, Go", "Единая точка входа; маршрутизация монолит ↔ микросервисы, постепенный переход (Strangler Fig, фиче-флаг с процентом трафика)")
+
+  Container_Boundary(catalogBc, "Каталог фильмов") {
+    Container(movies, "Movies Service", "Go", "Метаданные фильмов, рейтинги, жанры")
+    ContainerDb(moviesDb, "Movies DB", "PostgreSQL", "Схема каталога в общей БД")
+  }
+
+  Container_Boundary(eventsBc, "События") {
+    Container(events, "Events Service", "Go", "Приём событий фильмов, пользователей и платежей; публикация и обработка через Kafka")
+    ContainerQueue(kafka, "Event Bus", "Apache Kafka", "Топики movie-events, user-events, payment-events")
+  }
+
+  Container_Boundary(coreBc, "Остальные домены (пока в монолите)") {
+    Container(monolith, "Monolith", "Go", "Пользователи, платежи, подписки; домены выделяются в сервисы по мере миграции")
+    ContainerDb(monolithDb, "CinemaAbyss DB", "PostgreSQL", "Общая БД монолита и выделенных сервисов")
+  }
+}
+
+Rel(user, proxy, "HTTPS / REST")
+Rel(admin, proxy, "HTTPS / REST")
+
+Rel(proxy, movies, "HTTP", "/api/movies — трафик делится по проценту миграции")
+Rel(proxy, events, "HTTP", "/api/events")
+Rel(proxy, monolith, "HTTP", "Всё остальное: пользователи, платежи, подписки")
+
+Rel(movies, moviesDb, "SQL")
+Rel(monolith, monolithDb, "SQL")
+
+Rel(movies, kafka, "Pub", "movie-events: просмотр, оценка, добавление")
+Rel(monolith, kafka, "Pub", "user-events, payment-events")
+Rel(kafka, events, "Sub", "Чтение и обработка событий")
+
+@enduml

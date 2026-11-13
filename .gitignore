@@ -55,10 +55,14 @@ kubeconfig
 .env.test.local
 .env.production.local
 *.env
+src/kubernetes/dockerconfigsecret.yaml
+src/kubernetes/helm/values.local.yaml
 
 # Logs
 logs/
 *.log
+!docs/project_template/fortio-load.log
+!docs/project_template/fortio-stats.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -66,7 +70,7 @@ yarn-error.log*
 # Build artifacts
 dist/
 build/
-out/
+/out
 target/
 .gradle/
 
@@ -154,3 +158,4 @@ go.work
 
 # Postman tests reports
 tests/postman/reports/
+src/kubernetes/dockerconfigsecret.yaml
